@@ -3,7 +3,7 @@ import React from 'react';
 import { User, UserRole, School, Student } from '../../types';
 import { PageHeader } from './PanelShared';
 import { MetricCard } from '../Card';
-import { School as SchoolIcon, Users, BarChart3, Award, Inbox } from 'lucide-react';
+import { School as SchoolIcon, Users, BarChart3, Award, Inbox, AlertTriangle, RotateCcw } from 'lucide-react';
 
 export const AnalyticsPanel: React.FC<{
   currentUser: User;
@@ -12,7 +12,9 @@ export const AnalyticsPanel: React.FC<{
   getDistrictStats: (stateCode: string) => any[];
   getBlockStats: (districtCode: string) => any[];
   schoolsLoading?: boolean;
-}> = ({ currentUser, schools, students, getDistrictStats, getBlockStats, schoolsLoading }) => {
+  schoolsError?: string | null;
+  onRetrySchools?: () => void;
+}> = ({ currentUser, schools, students, getDistrictStats, getBlockStats, schoolsLoading, schoolsError, onRetrySchools }) => {
   const isAdmin = [UserRole.ADMIN, UserRole.DISTRICT_ADMIN, UserRole.BLOCK_ADMIN].includes(currentUser.role);
   const isPrincipal = currentUser.role === UserRole.SCHOOL || (currentUser.role as any) === 'school' || (currentUser.role as any) === 'principal' || currentUser.role === UserRole.TEACHER;
 
@@ -50,6 +52,21 @@ export const AnalyticsPanel: React.FC<{
           <div className="flex justify-center items-center py-16">
             <div className="w-7 h-7 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             <span className="ml-3 text-xs text-slate-500 dark:text-slate-400 font-mono">Loading school performance data...</span>
+          </div>
+        ) : schoolsError ? (
+          <div className="flex flex-col items-center justify-center py-14 text-center">
+            <AlertTriangle className="w-9 h-9 text-rose-500 mb-2" />
+            <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">Failed to load school analytics</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 mb-4">{schoolsError}</p>
+            {onRetrySchools && (
+              <button
+                onClick={onRetrySchools}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-mono font-medium transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Retry Request
+              </button>
+            )}
           </div>
         ) : data.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 text-center">
