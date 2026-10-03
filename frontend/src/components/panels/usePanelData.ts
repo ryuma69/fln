@@ -32,6 +32,7 @@ export function usePanelData(token: string, currentUser: User, activePanel: stri
   // empty state instead.
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [apiSchools, setApiSchools] = useState<School[]>([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(true);
   const [apiUsers, setApiUsers] = useState<any[]>([]);
   const [apiReports, setApiReports] = useState<EvaluationReport[]>([]);
   const [apiWorksheets, setApiWorksheets] = useState<Worksheet[]>([]);
@@ -39,7 +40,12 @@ export function usePanelData(token: string, currentUser: User, activePanel: stri
 
   useEffect(() => {
     const headers = { 'Authorization': `Bearer ${token}` };
-    apiFetch('/api/schools', { headers }).then(r => r.json()).then(d => { if (Array.isArray(d)) setApiSchools(d); }).catch(() => { });
+    setSchoolsLoading(true);
+    apiFetch('/api/schools', { headers })
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setApiSchools(d); })
+      .catch(() => { })
+      .finally(() => setSchoolsLoading(false));
     apiFetch('/api/admin/coordinators', { headers }).then(r => r.json()).then(d => { if (Array.isArray(d)) setApiUsers(d); }).catch(() => { });
     apiFetch('/api/evaluation/reports', { headers }).then(r => r.json()).then(d => { if (Array.isArray(d)) setApiReports(d); }).catch(() => { });
     apiFetch('/api/worksheets', { headers }).then(r => r.json()).then(d => { if (Array.isArray(d)) setApiWorksheets(d); }).catch(() => { });
@@ -138,7 +144,7 @@ export function usePanelData(token: string, currentUser: User, activePanel: stri
   };
 
   return {
-    students, studentsLoading, schools, usersList, reportsList, worksheetsList, teachersList,
+    students, studentsLoading, schools, schoolsLoading, usersList, reportsList, worksheetsList, teachersList,
     getDistrictStats, getBlockStats, updateStudentLocally, refreshStudents,
   };
 }
