@@ -139,40 +139,41 @@ const RegionalAnalyticsViewContent: React.FC<{ token: string; user: User }> = ({
             </span>
           </div>
 
-          {/* Cards */}
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div className="p-4 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-sm">
-              <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono font-bold uppercase block">Average FLN Level</span>
-              <span className="block text-2xl font-display font-extrabold text-zinc-900 dark:text-white mt-1">Level {data?.national?.avgLevel ?? 5.0}</span>
-            </div>
-            <div className="p-4 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-sm">
-              <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono font-bold uppercase block">Certification Rate</span>
-              <span className="block text-2xl font-display font-extrabold text-zinc-900 dark:text-white mt-1">{data?.national?.certificationRate ?? 65}%</span>
-            </div>
-          </div>
-
-          {/* Topic Mastery progress */}
-          <div className="space-y-4 pt-2">
-            <h5 className="text-[10px] font-mono font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">Topic Mastery Scores</h5>
-            {Object.entries(data?.national?.topicMastery || {
-              "Number Sense": 75,
-              "Number Operations": 68,
-              "Shapes": 80,
-              "Fractions": 55,
-              "Patterns": 70,
-              "Measurement": 62
-            }).map(([topic, val]: any) => (
-              <div key={topic} className="space-y-1.5">
-                <div className="flex justify-between text-xs font-medium">
-                  <span className="text-zinc-600 dark:text-zinc-300">{topic}</span>
-                  <span className="font-semibold text-zinc-900 dark:text-white">{val}%</span>
+          {data?.national ? (
+            <>
+              {/* Cards */}
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-sm">
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono font-bold uppercase block">Average FLN Level</span>
+                  <span className="block text-2xl font-display font-extrabold text-zinc-900 dark:text-white mt-1">Level {data.national.avgLevel}</span>
                 </div>
-                <div className="w-full bg-zinc-100 dark:bg-zinc-700 rounded-full h-2">
-                  <div className="bg-zinc-500 h-2 rounded-full transition-all" style={{ width: `${val}%` }} />
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-sm">
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono font-bold uppercase block">Certification Rate</span>
+                  <span className="block text-2xl font-display font-extrabold text-zinc-900 dark:text-white mt-1">{data.national.certificationRate}%</span>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {/* Topic Mastery progress */}
+              <div className="space-y-4 pt-2">
+                <h5 className="text-[10px] font-mono font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">Topic Mastery Scores</h5>
+                {data.national.topicMastery && Object.entries(data.national.topicMastery).map(([topic, val]: any) => (
+                  <div key={topic} className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-zinc-600 dark:text-zinc-300">{topic}</span>
+                      <span className="font-semibold text-zinc-900 dark:text-white">{val}%</span>
+                    </div>
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-700 rounded-full h-2">
+                      <div className="bg-zinc-500 h-2 rounded-full transition-all" style={{ width: `${val}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="py-12 text-center text-zinc-400 dark:text-zinc-500 text-sm font-medium">
+              Not available for your role
+            </div>
+          )}
         </div>
 
         {/* Local Assigned Scope */}

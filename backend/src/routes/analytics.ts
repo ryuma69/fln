@@ -18,7 +18,16 @@ export function registerAnalyticsRoutes(app: express.Express) {
       role === UserRole.VOLUNTEER;
 
     if (isInstitutional) {
-      const schoolId = user.schoolId || '';
+      const assignedSchools: string[] = role === UserRole.VOLUNTEER
+        ? (Array.isArray(user.assignedSchools) && user.assignedSchools.length > 0
+            ? user.assignedSchools
+            : (user.schoolId ? [user.schoolId] : []))
+        : (user.schoolId
+            ? [user.schoolId]
+            : (Array.isArray(user.assignedSchools) && user.assignedSchools.length > 0 ? user.assignedSchools : []));
+
+      const schoolId = user.schoolId || (assignedSchools.length === 1 ? assignedSchools[0] : (assignedSchools.length > 0 ? assignedSchools.join(',') : ''));
+      const hasSchools = assignedSchools.length > 0;
 
       const [
         schoolAnalytics,
@@ -28,43 +37,65 @@ export function registerAnalyticsRoutes(app: express.Express) {
         certifiedCount,
         totalReports
       ] = await Promise.all([
-        schoolId
-          ? dbStore.getAnalyticsForScope({ id: schoolId })
+        hasSchools
+          ? dbStore.getAnalyticsForScope(
+              assignedSchools.length === 1
+                ? { id: assignedSchools[0] }
+                : { id: { $in: assignedSchools } }
+            )
           : {
               avgLevel: 0,
               certificationRate: 0,
-              topicMastery: {
-                "Number Sense": 55,
-                "Number Operations": 45,
-                "Shapes": 58,
-                "Fractions": 20,
-                "Patterns": 38,
-                "Measurement": 32
-              },
+              topicMastery: {},
               levelDistribution: {},
               count: 0
             },
-        schoolId ? dbStore.countStudentsFast({ schoolId }) : 0,
-        schoolId ? 1 : 0,
-        // Worksheets count scoped to school
+        // Total students count across assigned schools
         (async () => {
-          if (!schoolId) return 0;
+          if (!hasSchools) return 0;
           if (dbStore.getDb()) {
-            return await dbStore.getDb()!.collection('worksheets').countDocuments({ schoolId });
+            return await dbStore.getDb()!.collection('students').countDocuments({ schoolId: { $in: assignedSchools } });
           }
-          return ((dbStore as any).data?.worksheets || []).filter((w: any) => w.schoolId === schoolId).length;
+          return ((dbStore as any).data?.students || []).filter((s: any) => assignedSchools.includes(s.schoolId)).length;
         })(),
-        schoolId ? dbStore.countStudentsFast({ schoolId, currentLevelMin: 5 }) : 0,
-        // Reports count scoped to school
+        assignedSchools.length,
+        // Worksheets count scoped to schools
         (async () => {
-          if (!schoolId) return 0;
+          if (!hasSchools) return 0;
           if (dbStore.getDb()) {
-            const studentIds = (await dbStore.getDb()!.collection('students').find({ schoolId }, { projection: { id: 1 } }).toArray()).map((s: any) => s.id);
+            return await dbStore.getDb()!.collection('worksheets').countDocuments({ schoolId: { $in: assignedSchools } });
+          }
+          return ((dbStore as any).data?.worksheets || []).filter((w: any) => assignedSchools.includes(w.schoolId)).length;
+        })(),
+        // Certified students count (currentLevel >= 5) across assigned schools
+        (async () => {
+          if (!hasSchools) return 0;
+          if (dbStore.getDb()) {
+            return await dbStore.getDb()!.collection('students').countDocuments({
+              schoolId: { $in: assignedSchools },
+              currentLevel: { $gte: 5 }
+            });
+          }
+          return ((dbStore as any).data?.students || []).filter(
+            (s: any) => assignedSchools.includes(s.schoolId) && (s.currentLevel || 0) >= 5
+          ).length;
+        })(),
+        // Reports count scoped to assigned schools
+        (async () => {
+          if (!hasSchools) return 0;
+          if (dbStore.getDb()) {
+            const studentIds = (await dbStore.getDb()!.collection('students').find(
+              { schoolId: { $in: assignedSchools } },
+              { projection: { id: 1 } }
+            ).toArray()).map((s: any) => s.id);
             if (studentIds.length === 0) return 0;
             return await dbStore.getDb()!.collection('evaluation_reports').countDocuments({ studentId: { $in: studentIds } });
           }
-          const studentIds = ((dbStore as any).data?.students || []).filter((s: any) => s.schoolId === schoolId).map((s: any) => s.id);
-          return ((dbStore as any).data?.evaluationReports || []).filter((r: any) => studentIds.includes(r.studentId)).length;
+          const studentIds = ((dbStore as any).data?.students || [])
+            .filter((s: any) => assignedSchools.includes(s.schoolId))
+            .map((s: any) => s.id);
+          return ((dbStore as any).data?.evaluationReports || [])
+            .filter((r: any) => studentIds.includes(r.studentId)).length;
         })(),
       ]);
 

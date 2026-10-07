@@ -97,7 +97,22 @@ test('Issue #448: Analytics API Role-Based Scoping & Principal Data Isolation', 
     stateCode: 'PB'
   };
 
-  const testUsers = [principalUser, superadminUser, stateAdminUser];
+  const volunteerUser: User = {
+    id: 'user-volunteer-1',
+    name: 'Volunteer Multi',
+    email: 'volunteer@fln.gov.in',
+    role: UserRole.VOLUNTEER,
+    assignedSchools: ['sch-pb-01', 'sch-rj-02']
+  };
+
+  const unassignedUser: User = {
+    id: 'user-unassigned-1',
+    name: 'Volunteer Unassigned',
+    email: 'unassigned@fln.gov.in',
+    role: UserRole.VOLUNTEER
+  };
+
+  const testUsers = [principalUser, superadminUser, stateAdminUser, volunteerUser, unassignedUser];
 
   (dbStore as any).data = {
     users: testUsers,
@@ -116,6 +131,8 @@ test('Issue #448: Analytics API Role-Based Scoping & Principal Data Isolation', 
   const principalToken = jwt.sign({ email: principalUser.email }, JWT_SECRET);
   const superadminToken = jwt.sign({ email: superadminUser.email }, JWT_SECRET);
   const stateAdminToken = jwt.sign({ email: stateAdminUser.email }, JWT_SECRET);
+  const volunteerToken = jwt.sign({ email: volunteerUser.email }, JWT_SECRET);
+  const unassignedToken = jwt.sign({ email: unassignedUser.email }, JWT_SECRET);
 
   await t.test('1. Principal analytics is strictly scoped to user.schoolId and ignores query param widening', async () => {
     // Principal tries to widen scope by querying RJ state data
@@ -167,7 +184,40 @@ test('Issue #448: Analytics API Role-Based Scoping & Principal Data Isolation', 
     assert.ok(data.state, 'State admin receives state analytics for PB');
   });
 
-  await t.test('4. Unauthorized request without authentication is rejected with 401', async () => {
+  await t.test('4. Volunteer with multiple assignedSchools aggregates data across assigned schools', async () => {
+    const res = await fetch(`${baseUrl}/api/analytics`, {
+      headers: { Authorization: `Bearer ${volunteerToken}` }
+    });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+
+    // Volunteer assigned to both PB and RJ schools
+    assert.equal(data.totalSchools, 2, 'Volunteer should see 2 assigned schools');
+    assert.equal(data.totalStudents, 3, 'Volunteer should see all 3 students across both schools');
+    assert.equal(data.totalWorksheets, 2, 'Volunteer should see 2 worksheets across both schools');
+    assert.equal(data.pipeline.certified, 2, 'Volunteer should see 2 certified students');
+    assert.equal(data.pipeline.evaluated, 2, 'Volunteer should see 2 evaluation reports');
+    assert.ok(data.school, 'Must return school analytics object');
+    assert.equal(data.school.count, 3);
+    assert.equal(data.national, null, 'National scope must be null for volunteer');
+  });
+
+  await t.test('5. User without assigned schools returns empty topicMastery and zeroes', async () => {
+    const res = await fetch(`${baseUrl}/api/analytics`, {
+      headers: { Authorization: `Bearer ${unassignedToken}` }
+    });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+
+    assert.equal(data.totalSchools, 0);
+    assert.equal(data.totalStudents, 0);
+    assert.equal(data.totalWorksheets, 0);
+    assert.equal(data.pipeline.certified, 0);
+    assert.equal(data.pipeline.evaluated, 0);
+    assert.deepEqual(data.school.topicMastery, {}, 'Empty topicMastery when no schools assigned');
+  });
+
+  await t.test('6. Unauthorized request without authentication is rejected with 401', async () => {
     const res = await fetch(`${baseUrl}/api/analytics`);
     assert.equal(res.status, 401);
   });
