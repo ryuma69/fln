@@ -411,6 +411,7 @@ export interface QuestionTemplate {
   levelName: string;
   skills: string[];
   subskills: string[];
+  assessmentMode?: 'written' | 'observed' | 'both';
   /** What the question should make the child do. An instruction, not a finished question. */
   generationIntent: string;
   questionFamily: 'counting' | 'operation';
@@ -500,6 +501,7 @@ export interface ParamCatalog {
   numeralRange: string[];
   deprecatedNumeralRange?: string[];
   questionFamily?: string[];
+  assessmentMode?: string[];
   svgThemes?: SvgTheme[];
   generationIntent?: { minChars: number; maxChars: number };
   maxSvgThemes?: number;
